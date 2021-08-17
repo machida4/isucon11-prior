@@ -31,7 +31,7 @@ nginx-error-log: ## Tail nginx error.log
 	@sudo tail -f /var/log/nginx/error.log
 
 nginx-alp: ## Run alp
-	@sudo alp ltsv --file /var/log/nginx/access.log --sort sum --reverse --matching-groups '/api/chair/[0-9]+, /api/chair/buy/[0-9]+, /api/estate/[0-9]+, /api/estate/req_doc/[0-9]+, /api/recommended_estate/[0-9]+, /images/chair/[a-zA-Z0-9]+.png, /images/estate/[a-zA-Z0-9]+.png, /_next/static/.*' > alp.txt
+	@sudo alp ltsv --file /var/log/nginx/access.log --sort sum --reverse --matching-groups '/api/schedules/[a-zA-Z0-9]+' > alp.txt
 	@sudo ./dispost -f alp.txt
 
 db-restart: ## Restart mysql
