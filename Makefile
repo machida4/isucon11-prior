@@ -32,7 +32,7 @@ nginx-error-log: ## Tail nginx error.log
 
 nginx-alp: ## Run alp
 	@sudo alp ltsv --file /var/log/nginx/access.log --sort sum --reverse --matching-groups '/api/schedules/[a-zA-Z0-9]+' > alp.txt
-	@sudo ./dispost -f alp.txt
+	@./dispost -f alp.txt
 
 db-restart: ## Restart mysql
 	@sudo cp /dev/null /var/log/mysql/mysql-slow.log
@@ -42,7 +42,7 @@ db-restart: ## Restart mysql
 
 db-digest: ## Analyze mysql-slow.log by pt-query-digest
 	@sudo pt-query-digest /var/log/mysql/mysql-slow.log > digest.txt
-	@sudo ./dispost -f digest.txt
+	@./dispost -f digest.txt
 
 log: ## Tail journalctl
 	@sudo journalctl -f
