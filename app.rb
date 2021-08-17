@@ -69,12 +69,6 @@ class App < Sinatra::Base
       reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
       schedule[:reserved] = reservations.size
     end
-
-    def get_user(id)
-      user = db.xquery("SELECT * FROM `users` WHERE `id` = ? LIMIT 1", id).first
-      user[:email] = "" if !current_user || !current_user[:staff]
-      user
-    end
   end
 
   error do
