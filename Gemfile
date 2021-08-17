@@ -7,6 +7,7 @@ gem 'puma', require: false
 gem 'sinatra', require: 'sinatra/base'
 gem 'ulid'
 gem 'rack-cache'
+gem 'redis'
 
 group :development do
   gem 'sinatra-contrib'
