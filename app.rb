@@ -44,7 +44,7 @@ class App < Sinatra::Base
     end
 
     def get_reservations(schedule)
-      reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id]).to_a
+      reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
       if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
