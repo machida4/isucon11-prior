@@ -49,7 +49,7 @@ class App < Sinatra::Base
       if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
-        users = redis.mget(*reservation_user_ids).map do |json|
+        users = redis_users.mget(reservation_user_ids).map do |json|
           Oj.load(json, symbol_keys: true)
         end
         users_map = users.map do |user|
