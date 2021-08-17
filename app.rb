@@ -29,7 +29,11 @@ class App < Sinatra::Base
     end
 
     def redis_users
-      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1)
+      Thread.current[:redis_users] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1)
+    end
+
+    def redis_emails
+      Thread.current[:redis_email] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 2)
     end
 
     def required_login!
@@ -82,20 +86,18 @@ class App < Sinatra::Base
       tx.query("TRUNCATE `users`")
     end
 
+    redis_schedule.flushall
     redis_users.flushall
 
-    staff_user = transaction do |tx|
-      id = ULID.generate
-      email = "isucon2021_prior@isucon.net"
-      nickname = "isucon"
-      created_at = Time.now
-      tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `created_at`) VALUES (?, ?, ?, ?)", id, email, nickname, created_at)
+    id = ULID.generate
+    email = "isucon2021_prior@isucon.net"
+    nickname = "isucon"
+    created_at = Time.now
 
-      {id: id, email: email, nickname: nickname, staff: true, created_at: created_at}
-    end
+    staff_user = {id: id, email: email, nickname: nickname, staff: true, created_at: created_at}
 
-    redis_schedule.flushall
-    redis_users.set(staff_user[:id], Oj.dump(staff_user))
+    redis_users.set(id, Oj.dump(staff_user))
+    redis_email.set(email, id)
 
     json(language: "ruby")
   end
@@ -105,20 +107,15 @@ class App < Sinatra::Base
   end
 
   post "/api/signup" do
-    id = ""
-    nickname = ""
+    id = ULID.generate
+    email = params[:email]
+    nickname = params[:nickname]
+    created_at = Time.now
 
-    user = transaction do |tx|
-      id = ULID.generate
-      email = params[:email]
-      nickname = params[:nickname]
-      created_at = Time.now
-      tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `created_at`) VALUES (?, ?, ?, ?)", id, email, nickname, created_at)
-
-      {id: id, email: email, nickname: nickname, created_at: created_at}
-    end
+    user = {id: id, email: email, nickname: nickname, created_at: created_at}
 
     redis_users.set(id, Oj.dump(user))
+    redis_email.set(email, id)
 
     json(user)
   end
@@ -126,10 +123,10 @@ class App < Sinatra::Base
   post "/api/login" do
     email = params[:email]
 
-    user = db.xquery("SELECT `id`, `nickname` FROM `users` WHERE `email` = ? LIMIT 1", email).first
+    user_id = redis_email.get(email)
 
-    if user
-      session[:user_id] = user[:id]
+    if user_id
+      session[:user_id] = user_id
       json({id: current_user[:id], email: current_user[:email], nickname: current_user[:nickname], created_at: current_user[:created_at]})
     else
       session[:user_id] = nil
