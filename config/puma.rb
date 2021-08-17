@@ -9,7 +9,6 @@ environment ENV.fetch('RACK_ENV') { 'development' }
 pidfile File.join(root, 'tmp', 'puma.pid')
 
 preload_app!
-
 wait_for_less_busy_worker 0.005
-
 nakayoshi_fork true
+log_requests false
