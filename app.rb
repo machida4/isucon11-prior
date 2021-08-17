@@ -76,12 +76,21 @@ class App < Sinatra::Base
       tx.query("TRUNCATE `reservations`")
       tx.query("TRUNCATE `schedules`")
       tx.query("TRUNCATE `users`")
-
-      id = ULID.generate
-      tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
     end
 
     redis_users.flushall
+
+    staff_user = transaction do |tx|
+      id = ULID.generate
+      email = "isucon2021_prior@isucon.net"
+      nickname = "isucon"
+      created_at = Time.now
+      tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `created_at`) VALUES (?, ?, ?, ?)", id, email, nickname, created_at)
+
+      {id: id, email: email, nickname: nickname, staff: true, created_at: created_at}
+    end
+
+    redis_users.set(staff_user[:id], Oj.dump(staff_user))
 
     json(language: "ruby")
   end
@@ -104,7 +113,7 @@ class App < Sinatra::Base
       {id: id, email: email, nickname: nickname, created_at: created_at}
     end
 
-    redis_users.set(user_id, Oj.dump(user))
+    redis_users.set(id, Oj.dump(user))
 
     json(user)
   end
