@@ -8,6 +8,7 @@ gem 'sinatra', require: 'sinatra/base'
 gem 'ulid'
 gem 'rack-cache'
 gem 'redis'
+gem 'hiredis'
 
 group :development do
   gem 'sinatra-contrib'
