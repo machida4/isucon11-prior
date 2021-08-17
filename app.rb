@@ -49,8 +49,8 @@ class App < Sinatra::Base
       if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
-        users = reservation_user_ids.map do |reservation_user_id|
-          Oj.load(redis_users.get(reservation_user_id), symbol_keys: true)
+        users = redis.mget(reservation_user_ids).map do |json|
+          Oj.load(json, symbol_keys: true)
         end
         users_map = users.map do |user|
           user[:email] = "" if !current_user || !current_user[:staff]
