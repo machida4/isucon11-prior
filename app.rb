@@ -3,7 +3,6 @@ require "active_support/json"
 require "active_support/time"
 require_relative "oj_encoder"
 require_relative "db"
-require "redis"
 
 Time.zone = "UTC"
 
@@ -162,11 +161,8 @@ class App < Sinatra::Base
 
       created_at = Time.now
       tx.xquery("INSERT INTO `reservations` (`id`, `schedule_id`, `user_id`, `created_at`) VALUES (?, ?, ?, ?)", id, schedule_id, user_id, created_at)
-      schedule_json = Oj.dump({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
-      redis.set(schedule_id, schedule_json)
 
-      content_type "application/json"
-      schedule_json
+      json({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
     end
   end
 
