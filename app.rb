@@ -46,6 +46,7 @@ class App < Sinatra::Base
     def get_reservations(schedule)
       reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
       reservation_user_ids = reservations.map { |r| r[:user_id] }
+      logger.info(reservation_user_ids)
 
       users = db.xquery("SELECT * FROM `users` WHERE `id` IN (?)", [reservation_user_ids])
       users_map = users.map { |u| [u.id, u] }.to_h
