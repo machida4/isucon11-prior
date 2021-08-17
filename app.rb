@@ -25,8 +25,8 @@ class App < Sinatra::Base
       DB.transaction(name, &block)
     end
 
-    def redis
-      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis)
+    def redis_schedule
+      Thread.current[:redis_schedule] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 0)
     end
 
     def required_login!
@@ -80,7 +80,7 @@ class App < Sinatra::Base
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
     end
 
-    redis.flushall
+    redis_schedule.flushall
 
     json(language: "ruby")
   end
@@ -130,8 +130,11 @@ class App < Sinatra::Base
       created_at = Time.now
 
       tx.xquery("INSERT INTO `schedules` (`id`, `title`, `capacity`, `created_at`) VALUES (?, ?, ?, ?)", id, title, capacity, created_at)
+      schedule_json = Oj.dump({id: id, title: title, capacity: capacity, created_at: created_at})
+      redis_schedule.set(id, schedule_json)
 
-      json({id: id, title: title, capacity: capacity, created_at: created_at})
+      content_type "application/json"
+      schedule_json
     end
   end
 
@@ -143,11 +146,13 @@ class App < Sinatra::Base
       schedule_id = params[:schedule_id].to_s
       user_id = current_user[:id]
 
-      halt(403, JSON.generate(error: "schedule not found")) if tx.xquery("SELECT 1 FROM `schedules` WHERE `id` = ? LIMIT 1 FOR UPDATE", schedule_id).first.nil?
+      #halt(403, JSON.generate(error: "schedule not found")) if tx.xquery("SELECT 1 FROM `schedules` WHERE `id` = ? LIMIT 1 FOR UPDATE", schedule_id).first.nil?
+      halt(403, JSON.generate(error: "schedule not found")) if redis_schedule.get(schedule_id).nil?
       halt(403, JSON.generate(error: "user not found")) unless tx.xquery("SELECT 1 FROM `users` WHERE `id` = ? LIMIT 1", user_id).first
       halt(403, JSON.generate(error: "already taken")) if tx.xquery("SELECT 1 FROM `reservations` WHERE `schedule_id` = ? AND `user_id` = ? LIMIT 1", schedule_id, user_id).first
 
-      capacity = tx.xquery("SELECT `capacity` FROM `schedules` WHERE `id` = ? LIMIT 1", schedule_id).first[:capacity]
+      #capacity = tx.xquery("SELECT `capacity` FROM `schedules` WHERE `id` = ? LIMIT 1", schedule_id).first[:capacity]
+      capacity = Oj.load(redis_schedule.get(schedule_id))["capacity"].to_i
       reserved = tx.xquery("SELECT COUNT(*) AS count FROM `reservations` WHERE `schedule_id` = ?", schedule_id).first[:count]
 
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
