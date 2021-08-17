@@ -74,7 +74,7 @@ class App < Sinatra::Base
       tx.query("TRUNCATE `schedules`")
       tx.query("TRUNCATE `users`")
 
-      id = ULID.generate
+      id = "#{Time.now.to_i}#{Time.now.usec.to_i}"
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
     end
 
@@ -92,7 +92,7 @@ class App < Sinatra::Base
     nickname = ""
 
     user = transaction do |tx|
-      id = ULID.generate
+      id = "#{Time.now.to_i}#{Time.now.usec.to_i}"
       email = params[:email]
       nickname = params[:nickname]
       created_at = Time.now
@@ -122,7 +122,7 @@ class App < Sinatra::Base
     required_staff_login!
 
     transaction do |tx|
-      id = ULID.generate
+      id = "#{Time.now.to_i}#{Time.now.usec.to_i}"
       title = params[:title].to_s
       capacity = params[:capacity].to_i
       created_at = Time.now
@@ -137,7 +137,7 @@ class App < Sinatra::Base
     required_login!
 
     transaction do |tx|
-      id = ULID.generate
+      id = "#{Time.now.to_i}#{Time.now.usec.to_i}"
       schedule_id = params[:schedule_id].to_s
       user_id = current_user[:id]
 
