@@ -130,9 +130,9 @@ class App < Sinatra::Base
       id = ULID.generate
       title = params[:title].to_s
       capacity = params[:capacity].to_i
+      created_at = Time.now
 
-      tx.xquery("INSERT INTO `schedules` (`id`, `title`, `capacity`, `created_at`) VALUES (?, ?, ?, NOW(6))", id, title, capacity)
-      created_at = tx.xquery("SELECT `created_at` FROM `schedules` WHERE `id` = ?", id).first[:created_at]
+      tx.xquery("INSERT INTO `schedules` (`id`, `title`, `capacity`, `created_at`) VALUES (?, ?, ?, ?)", id, title, capacity, created_at)
 
       json({id: id, title: title, capacity: capacity, created_at: created_at})
     end
