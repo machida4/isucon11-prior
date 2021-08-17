@@ -95,8 +95,8 @@ class App < Sinatra::Base
       id = ULID.generate
       email = params[:email]
       nickname = params[:nickname]
-      tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `created_at`) VALUES (?, ?, ?, NOW(6))", id, email, nickname)
-      created_at = tx.xquery("SELECT `created_at` FROM `users` WHERE `id` = ? LIMIT 1", id).first[:created_at]
+      created_at = Time.now
+      tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `created_at`) VALUES (?, ?, ?, ?)", id, email, nickname, created_at)
 
       {id: id, email: email, nickname: nickname, created_at: created_at}
     end
@@ -151,7 +151,7 @@ class App < Sinatra::Base
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
 
       created_at = Time.now
-      tx.xquery("INSERT INTO `reservations` (`id`, `schedule_id`, `user_id`, `created_at`) VALUES (?, ?, ?, NOW(6))", id, schedule_id, user_id, created_at)
+      tx.xquery("INSERT INTO `reservations` (`id`, `schedule_id`, `user_id`, `created_at`) VALUES (?, ?, ?, ?)", id, schedule_id, user_id, created_at)
 
       json({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
     end
