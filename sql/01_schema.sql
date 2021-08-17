@@ -1,13 +1,13 @@
 USE `isucon2021_prior`;
 
 DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users` (
-  `id`         VARCHAR(255) PRIMARY KEY NOT NULL,
-  `email`      VARCHAR(255) NOT NULL DEFAULT '',
-  `nickname`   VARCHAR(120) NOT NULL DEFAULT '',
-  `staff`      BOOLEAN NOT NULL DEFAULT false,
-  `created_at` DATETIME(6) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
+-- CREATE TABLE `users` (
+--   `id`         VARCHAR(255) PRIMARY KEY NOT NULL,
+--   `email`      VARCHAR(255) NOT NULL DEFAULT '',
+--   `nickname`   VARCHAR(120) NOT NULL DEFAULT '',
+--   `staff`      BOOLEAN NOT NULL DEFAULT false,
+--   `created_at` DATETIME(6) NOT NULL
+-- ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
 DROP TABLE IF EXISTS `schedules`;
 CREATE TABLE `schedules` (
@@ -26,4 +26,4 @@ CREATE TABLE `reservations` (
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
 CREATE INDEX schedule_id_idx ON reservations(schedule_id);
-CREATE INDEX email_idx ON users(email);
+-- CREATE INDEX email_idx ON users(email);
