@@ -83,7 +83,7 @@ class App < Sinatra::Base
     transaction do |tx|
       tx.query("TRUNCATE `reservations`")
       tx.query("TRUNCATE `schedules`")
-      tx.query("TRUNCATE `users`")
+      # tx.query("TRUNCATE `users`")
     end
 
     redis_schedule.flushall
