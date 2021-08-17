@@ -9,6 +9,7 @@ gem 'ulid'
 gem 'rack-cache'
 gem 'redis'
 gem 'hiredis'
+gem 'oj'
 
 group :development do
   gem 'sinatra-contrib'

@@ -20,6 +20,7 @@ GEM
     mysql2-cs-bind (0.1.0)
       mysql2
     nio4r (2.5.7)
+    oj (3.13.2)
     puma (5.3.2)
       nio4r (~> 2.0)
     rack (2.2.3)
@@ -61,6 +62,7 @@ DEPENDENCIES
   hiredis
   mysql2
   mysql2-cs-bind
+  oj
   puma
   rack-cache
   redis
