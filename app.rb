@@ -11,7 +11,7 @@ class App < Sinatra::Base
   set :session_secret, "tagomoris"
   set :sessions, key: "session_isucon2021_prior", expire_after: 3600
   set :show_exceptions, false
-  set :public_folder, "./public"
+  # set :public_folder, "./public"
   set :json_encoder, ActiveSupport::JSON
 
   helpers do
