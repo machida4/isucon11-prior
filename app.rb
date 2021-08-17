@@ -41,7 +41,7 @@ class App < Sinatra::Base
     end
 
     def current_user
-      @current_user ||= Oj.load(redis_users.get(session[:user_id]))
+      @current_user ||= Oj.load(redis_users.get(session[:user_id]), symbol_keys: true)
     end
 
     def get_reservations(schedule)
@@ -50,7 +50,7 @@ class App < Sinatra::Base
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
         users = reservation_user_ids.map do |reservation_user_id|
-          Oj.load(redis_users.get(reservation_user_id))
+          Oj.load(redis_users.get(reservation_user_id), symbol_keys: true)
         end
         users_map = users.map do |user|
           user[:email] = "" if !current_user || !current_user[:staff]
