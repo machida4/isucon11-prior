@@ -25,9 +25,9 @@ class App < Sinatra::Base
       DB.transaction(name, &block)
     end
 
-    # def redis
-    #   Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6380, driver: :hiredis)
-    # end
+    def redis
+      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6380, driver: :hiredis)
+    end
 
     def required_login!
       halt(401, JSON.generate(error: "login required")) if current_user.nil?
@@ -78,10 +78,9 @@ class App < Sinatra::Base
 
       id = ULID.generate
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
-      redis = Redis.new
     end
 
-    # redis.flushall
+    redis.flushall
 
     json(language: "ruby")
   end
