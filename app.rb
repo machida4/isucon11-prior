@@ -75,7 +75,17 @@ class App < Sinatra::Base
       tx.query('TRUNCATE `reservations`')
       tx.query('TRUNCATE `schedules`')
       tx.query('TRUNCATE `users`')
+    end
 
+    # スキーマ適用
+    sql_path = 'Schema.sql'
+    cmd = ['mysql', '-h', ENV['DB_HOST'], '-u', ENV['DB_USER'], "-p#{ENV['DB_PASS']}", '-P', ENV['DB_PORT'], ENV['DB_NAME']]
+    IO.popen(cmd, 'w') do |io|
+      io.puts File.read(sql_path)
+      io.close
+    end
+
+    transaction do |tx|
       id = generate_id('users', tx)
       tx.xquery('INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))', id, 'isucon2021_prior@isucon.net', 'isucon')
     end
