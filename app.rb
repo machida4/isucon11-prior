@@ -60,11 +60,6 @@ class App < Sinatra::Base
       schedule[:reservations] = reservations
       schedule[:reserved] = reservations.size
     end
-
-    def get_reservations_count(schedule)
-      reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
-      schedule[:reserved] = reservations.size
-    end
   end
 
   error do
