@@ -25,3 +25,5 @@ CREATE TABLE `users`
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`)
 );
+
+ALTER TABLE isucon2021_prior.reservations ADD INDEX schedule_id_idx(schedule_id);

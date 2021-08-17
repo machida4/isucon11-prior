@@ -48,6 +48,7 @@ class App < Sinatra::Base
         reservation[:user] = get_user(reservation[:user_id])
         reservation
       end
+
       schedule[:reservations] = reservations
       schedule[:reserved] = reservations.size
     end
