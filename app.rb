@@ -97,7 +97,7 @@ class App < Sinatra::Base
     staff_user = {id: id, email: email, nickname: nickname, staff: true, created_at: created_at}
 
     redis_users.set(id, Oj.dump(staff_user))
-    redis_email.set(email, id)
+    redis_emails.set(email, id)
 
     json(language: "ruby")
   end
@@ -115,7 +115,7 @@ class App < Sinatra::Base
     user = {id: id, email: email, nickname: nickname, created_at: created_at}
 
     redis_users.set(id, Oj.dump(user))
-    redis_email.set(email, id)
+    redis_emails.set(email, id)
 
     json(user)
   end
@@ -123,7 +123,7 @@ class App < Sinatra::Base
   post "/api/login" do
     email = params[:email]
 
-    user_id = redis_email.get(email)
+    user_id = redis_emails.get(email)
 
     if user_id
       session[:user_id] = user_id
