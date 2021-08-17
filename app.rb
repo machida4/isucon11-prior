@@ -153,10 +153,7 @@ class App < Sinatra::Base
       halt(403, JSON.generate(error: "already taken")) if tx.xquery("SELECT 1 FROM `reservations` WHERE `schedule_id` = ? AND `user_id` = ? LIMIT 1", schedule_id, user_id).first
 
       capacity = tx.xquery("SELECT `capacity` FROM `schedules` WHERE `id` = ? LIMIT 1", schedule_id).first[:capacity]
-      reserved = 0
-      tx.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule_id).each do
-        reserved += 1
-      end
+      reserved = tx.xquery("SELECT COUNT(*) AS count FROM `reservations` WHERE `schedule_id` = ?", schedule_id).first[:count]
 
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
 
