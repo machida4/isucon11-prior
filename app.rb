@@ -49,9 +49,9 @@ class App < Sinatra::Base
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
         users = db.xquery("SELECT * FROM `users` WHERE `id` IN (?)", [reservation_user_ids])
-        users_map = users.map { |user| [user.id, user] }.to_h
+        users_map = users.map { |user| [user[:id], user] }.to_h
 
-        reservations.map! do |reservation|
+        reservations = reservations.map do |reservation|
           reservation[:user] = users_map[reservation[:user_id]]
           reservation
         end
