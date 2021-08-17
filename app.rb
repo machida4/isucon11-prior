@@ -24,10 +24,6 @@ class App < Sinatra::Base
       DB.transaction(name, &block)
     end
 
-    def redis
-      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis)
-    end
-
     def redis_users
       Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1)
     end
@@ -85,7 +81,7 @@ class App < Sinatra::Base
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
     end
 
-    redis.flushall
+    redis_users.flushall
 
     json(language: "ruby")
   end
