@@ -25,12 +25,8 @@ class App < Sinatra::Base
       DB.transaction(name, &block)
     end
 
-    def redis_reservations
-      Thread.current[:redis_reservations] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1)
-    end
-
-    def redis_users
-      Thread.current[:redis_users] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 2)
+    def redis
+      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis)
     end
 
     def required_login!
@@ -84,8 +80,7 @@ class App < Sinatra::Base
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
     end
 
-    redis_reservations.flushall
-    redis_users.flushall
+    redis.flushall
 
     json(language: "ruby")
   end
@@ -160,7 +155,7 @@ class App < Sinatra::Base
       created_at = Time.now
       tx.xquery("INSERT INTO `reservations` (`id`, `schedule_id`, `user_id`, `created_at`) VALUES (?, ?, ?, ?)", id, schedule_id, user_id, created_at)
       schedule_json = Oj.dump({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
-      redis_reservations.set(schedule_id, schedule_json)
+      redis.set(schedule_id, schedule_json)
 
       content_type "application/json"
       schedule_json
