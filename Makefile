@@ -18,9 +18,9 @@ app-log: ## Tail server log
 nginx-restart: ## Restart nginx
 	@sudo cp /dev/null /var/log/nginx/access.log
 	@sudo cp nginx.conf /etc/nginx/
-	@echo 'Validate nginx.conf ---'
+	@echo '--- Validate nginx.conf ---'
 	@sudo nginx -t
-	@echo 'Validate end ---'
+	@echo '--- Validate end ---'
 	@sudo systemctl restart nginx
 	@echo 'Restart nginx'
 
