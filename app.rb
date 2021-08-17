@@ -36,15 +36,15 @@ class App < Sinatra::Base
     end
 
     def current_user
-      @current_user ||= db.xquery("SELECT * FROM `users` WHERE `id` = ? LIMIT 1", session[:user_id]).first
+      @current_user ||= db.xquery("SELECT `id`, `email`, `nickname`, `staff`, `nickname` FROM `users` WHERE `id` = ? LIMIT 1", session[:user_id]).first
     end
 
     def get_reservations(schedule)
-      reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
+      reservations = db.xquery("SELECT `id`, `schedule_id`, `user_id`, `created_at` FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
       if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
-        users = db.xquery("SELECT * FROM `users` WHERE `id` IN (?)", [reservation_user_ids])
+        users = db.xquery("SELECT `id`, `email`, `nickname`, `staff`, `nickname` FROM `users` WHERE `id` IN (?)", [reservation_user_ids])
         users_map = users.map do |user|
           user[:email] = "" if !current_user || !current_user[:staff]
 
@@ -158,7 +158,7 @@ class App < Sinatra::Base
   end
 
   get "/api/schedules" do
-    schedules = db.xquery("SELECT * FROM `schedules` ORDER BY `id` DESC")
+    schedules = db.xquery("SELECT `id`, `title`, `capacity`, `created_at` FROM `schedules` ORDER BY `id` DESC")
     schedule_id_count = db.xquery("SELECT schedule_id, COUNT(schedule_id) AS count FROM reservations GROUP BY schedule_id")
     schedule_id_count_map = schedule_id_count.map do |si|
       [si[:schedule_id], si[:count]]
@@ -174,7 +174,7 @@ class App < Sinatra::Base
 
   get "/api/schedules/:id" do
     id = params[:id]
-    schedule = db.xquery("SELECT * FROM `schedules` WHERE id = ? LIMIT 1", id).first
+    schedule = db.xquery("SELECT `id`, `title`, `capacity`, `created_at` FROM `schedules` WHERE id = ? LIMIT 1", id).first
     halt(404, {}) unless schedule
 
     get_reservations(schedule)
