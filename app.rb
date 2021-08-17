@@ -29,6 +29,10 @@ class App < Sinatra::Base
       Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis)
     end
 
+    def redis_users
+      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1)
+    end
+
     def required_login!
       halt(401, JSON.generate(error: "login required")) if current_user.nil?
     end
@@ -38,7 +42,7 @@ class App < Sinatra::Base
     end
 
     def current_user
-      @current_user ||= db.xquery("SELECT `id`, `email`, `nickname`, `staff`, `nickname` FROM `users` WHERE `id` = ? LIMIT 1", session[:user_id]).first
+      @current_user ||= redis_users.get(session[:user_id]).tap { |json| Oj.load(json) }
     end
 
     def get_reservations(schedule)
@@ -46,7 +50,9 @@ class App < Sinatra::Base
       if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
-        users = db.xquery("SELECT `id`, `email`, `nickname`, `staff`, `nickname` FROM `users` WHERE `id` IN (?)", [reservation_user_ids])
+        users = reservation_user_ids.map do |reservation_user_id|
+          redis_users.get(reservation_user_id).tap { |json| Oj.load(json) }
+        end
         users_map = users.map do |user|
           user[:email] = "" if !current_user || !current_user[:staff]
 
@@ -103,6 +109,8 @@ class App < Sinatra::Base
       {id: id, email: email, nickname: nickname, created_at: created_at}
     end
 
+    redis_users.set(user_id, Oj.dump(user))
+
     json(user)
   end
 
@@ -144,7 +152,7 @@ class App < Sinatra::Base
       user_id = current_user[:id]
 
       halt(403, JSON.generate(error: "schedule not found")) if tx.xquery("SELECT 1 FROM `schedules` WHERE `id` = ? LIMIT 1 FOR UPDATE", schedule_id).first.nil?
-      halt(403, JSON.generate(error: "user not found")) unless tx.xquery("SELECT 1 FROM `users` WHERE `id` = ? LIMIT 1", user_id).first
+      halt(403, JSON.generate(error: "user not found")) unless redis_users.exists(user_id)
       halt(403, JSON.generate(error: "already taken")) if tx.xquery("SELECT 1 FROM `reservations` WHERE `schedule_id` = ? AND `user_id` = ? LIMIT 1", schedule_id, user_id).first
 
       capacity = tx.xquery("SELECT `capacity` FROM `schedules` WHERE `id` = ? LIMIT 1", schedule_id).first[:capacity]
