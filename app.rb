@@ -181,8 +181,4 @@ class App < Sinatra::Base
 
     json(schedule)
   end
-
-  get "*" do
-    File.read(File.join("public", "index.html"))
-  end
 end
