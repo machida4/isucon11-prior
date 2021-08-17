@@ -40,12 +40,12 @@ class App < Sinatra::Base
     end
 
     def current_user
-      db.xquery("SELECT * FROM `users` WHERE `id` = ? LIMIT 1", session[:user_id]).first
+      @current_user ||= db.xquery("SELECT * FROM `users` WHERE `id` = ? LIMIT 1", session[:user_id]).first
     end
 
     def get_reservations(schedule)
-      reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
-      if !reservations.size == 0
+      reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id]).to_a
+      if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
         users = db.xquery("SELECT * FROM `users` WHERE `id` IN (?)", [reservation_user_ids])
@@ -57,7 +57,7 @@ class App < Sinatra::Base
         end
       end
 
-      schedule[:reservations] = reservations.to_a
+      schedule[:reservations] = reservations
       schedule[:reserved] = reservations.size
     end
 
