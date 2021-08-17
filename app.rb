@@ -169,20 +169,6 @@ class App < Sinatra::Base
 
   get "/api/schedules" do
     schedules = db.xquery("SELECT * FROM `schedules` ORDER BY `id` DESC")
-    schedules.each do |schedule|
-      get_reservations_count(schedule)
-    end
-
-    json(schedules.to_a)
-  end
-
-  def get_reservations_count(schedule)
-    reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
-    schedule[:reserved] = reservations.size
-  end
-
-  get "/api/schedules" do
-    schedules = db.xquery("SELECT * FROM `schedules` ORDER BY `id` DESC")
     schedule_id_count = db.xquery("SELECT schedule_id, COUNT(schedule_id) AS count FROM reservations GROUP BY schedule_id")
     schedule_id_count_map = schedule_id_count.map do |si|
       [si[:schedule_id], si[:count]]
