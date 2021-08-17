@@ -39,6 +39,9 @@ db-restart: ## Restart mysql
 	@sudo cp my.cnf /etc/mysql/
 	@sudo systemctl restart mysql
 	@echo 'Restart mysql'
+	@sudo cp -r sql /home/isucon/webapp/sql
+	@/home/isucon/webapp/tools/initdb
+	@echo 'Reset schema'
 
 db-digest: ## Analyze mysql-slow.log by pt-query-digest
 	@sudo pt-query-digest /var/log/mysql/mysql-slow.log > digest.txt
