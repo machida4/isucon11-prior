@@ -57,7 +57,7 @@ class App < Sinatra::Base
         end
       end
 
-      schedule[:reservations] = reservations
+      schedule[:reservations] = reservations.to_a
       schedule[:reserved] = reservations.size
     end
 
