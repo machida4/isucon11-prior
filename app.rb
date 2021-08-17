@@ -7,8 +7,6 @@ require_relative "db"
 Time.zone = "UTC"
 
 class App < Sinatra::Base
-  enable :logging
-
   set :session_secret, "tagomoris"
   set :sessions, key: "session_isucon2021_prior", expire_after: 3600
   set :show_exceptions, false
