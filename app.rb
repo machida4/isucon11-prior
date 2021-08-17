@@ -23,9 +23,9 @@ class App < Sinatra::Base
       DB.transaction(name, &block)
     end
 
-    def redis
-      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6380, driver: :hiredis)
-    end
+    # def redis
+    #   Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6380, driver: :hiredis)
+    # end
 
     def generate_id(table, tx)
       id = ULID.generate
@@ -91,7 +91,7 @@ class App < Sinatra::Base
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
     end
 
-    redis.flushall
+    # redis.flushall
 
     json(language: "ruby")
   end
