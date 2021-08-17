@@ -49,13 +49,14 @@ class App < Sinatra::Base
         reservation
       end
 
+      reservations = db.xquery("SELECT * FROM `reservations WHERE `schedule_id` = ?`")
+
       schedule[:reservations] = reservations
       schedule[:reserved] = reservations.size
     end
 
     def get_reservations_count(schedule)
-      reservations = db.xquery("SELECT * FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
-      schedule[:reserved] = reservations.size
+      schedule[:reserved] = = db.xquery("SELECT COUNT(*) FROM `reservations` WHERE `schedule_id` = ?", schedule[:id]).first[:count]
     end
 
     def get_user(id)
@@ -76,17 +77,7 @@ class App < Sinatra::Base
       tx.query("TRUNCATE `reservations`")
       tx.query("TRUNCATE `schedules`")
       tx.query("TRUNCATE `users`")
-    end
 
-    # スキーマ適用
-    sql_path = "./Schema.sql"
-    cmd = ["mysql", "-h", "127.0.0.1", "-u", "isucon", "-pisucon", "-P", "3306", "isucon2021_prior"]
-    IO.popen(cmd, "w") do |io|
-      io.puts File.read(sql_path)
-      io.close
-    end
-
-    transaction do |tx|
       id = generate_id("users", tx)
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
     end
