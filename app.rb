@@ -27,14 +27,6 @@ class App < Sinatra::Base
     #   Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6380, driver: :hiredis)
     # end
 
-    def generate_id(table, tx)
-      id = ULID.generate
-      while tx.xquery("SELECT 1 FROM `#{table}` WHERE `id` = ? LIMIT 1", id).first
-        id = ULID.generate
-      end
-      id
-    end
-
     def required_login!
       halt(401, JSON.generate(error: "login required")) if current_user.nil?
     end
@@ -87,7 +79,7 @@ class App < Sinatra::Base
       tx.query("TRUNCATE `schedules`")
       tx.query("TRUNCATE `users`")
 
-      id = generate_id("users", tx)
+      id = ULID.generate
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
     end
 
@@ -105,7 +97,7 @@ class App < Sinatra::Base
     nickname = ""
 
     user = transaction do |tx|
-      id = generate_id("users", tx)
+      id = ULID.generate
       email = params[:email]
       nickname = params[:nickname]
       tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `created_at`) VALUES (?, ?, ?, NOW(6))", id, email, nickname)
@@ -135,7 +127,7 @@ class App < Sinatra::Base
     required_staff_login!
 
     transaction do |tx|
-      id = generate_id("schedules", tx)
+      id = ULID.generate
       title = params[:title].to_s
       capacity = params[:capacity].to_i
 
@@ -150,7 +142,7 @@ class App < Sinatra::Base
     required_login!
 
     transaction do |tx|
-      id = generate_id("reservations", tx)
+      id = ULID.generate
       schedule_id = params[:schedule_id].to_s
       user_id = current_user[:id]
 
