@@ -155,8 +155,8 @@ class App < Sinatra::Base
 
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
 
-      tx.xquery("INSERT INTO `reservations` (`id`, `schedule_id`, `user_id`, `created_at`) VALUES (?, ?, ?, NOW(6))", id, schedule_id, user_id)
-      created_at = tx.xquery("SELECT `created_at` FROM `reservations` WHERE `id` = ?", id).first[:created_at]
+      created_at = Time.now
+      tx.xquery("INSERT INTO `reservations` (`id`, `schedule_id`, `user_id`, `created_at`) VALUES (?, ?, ?, NOW(6))", id, schedule_id, user_id, created_at)
 
       json({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
     end
