@@ -39,7 +39,7 @@ db-restart: ## Restart mysql
 	@sudo cp my.cnf /etc/mysql/
 	@sudo systemctl restart mysql
 	@echo 'Restart mysql'
-	@sudo cp -r sql /home/isucon/webapp/sql
+	@sudo cp -r sql/ /home/isucon/webapp/
 	@/home/isucon/webapp/tools/initdb
 	@echo 'Reset schema'
 
