@@ -177,8 +177,9 @@ class App < Sinatra::Base
 
   get "/api/schedules" do
     schedules_keys = redis_schedule.keys
-    json([]) unless schedules_keys
-    schedules = redis_schedule.mget(schedules_keys).map{|s|
+    json([]) if schedules_keys.empty?
+
+    schedules = redis_schedule.mget(schedules_keys).map { |s|
       Oj.load(s, symbol_keys: true)
     }
     schedule_id_count = db.xquery("SELECT schedule_id, COUNT(schedule_id) AS count FROM reservations GROUP BY schedule_id")
