@@ -26,7 +26,7 @@ class App < Sinatra::Base
     end
 
     def redis
-      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6380, driver: :hiredis)
+      Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis)
     end
 
     def required_login!
