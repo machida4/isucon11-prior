@@ -26,3 +26,4 @@ CREATE TABLE `reservations` (
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
 CREATE INDEX schedule_id_idx ON reservations(schedule_id);
+CREATE INDEX email_idx ON users(email);
