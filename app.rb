@@ -47,8 +47,8 @@ class App < Sinatra::Base
 
     def get_reservations(schedule)
       # reservations = db.xquery("SELECT `id`, `schedule_id`, `user_id`, `created_at` FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
-      reservations = Oj.load(redis[:reservation].get(schedule[:id]))
-      if !(reservations.size == 0)
+      reservations = Oj.load(redis[:reservation].get(schedule[:id])).to_a
+      unless reservations.empty?
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
         users = redis[:user].mget(reservation_user_ids).map do |json|
@@ -75,28 +75,6 @@ class App < Sinatra::Base
     err = env["sinatra.error"]
     warn err.full_message
     halt 500, JSON.generate(error: err.message)
-  end
-
-  get "/initialize" do
-    transaction do |tx|
-      tx.query("TRUNCATE `reservations`")
-      tx.query("TRUNCATE `schedules`")
-      # tx.query("TRUNCATE `users`")
-    end
-
-    redis.values.map(&:flushall)
-
-    id = ULID.generate
-    email = "isucon2021_prior@isucon.net"
-    nickname = "isucon"
-    created_at = Time.now
-
-    staff_user = {id: id, email: email, nickname: nickname, staff: true, created_at: created_at}
-
-    redis[:user].set(id, Oj.dump(staff_user))
-    redis[:email].set(email, id)
-
-    json(language: "ruby")
   end
 
   post "/initialize" do
