@@ -47,7 +47,7 @@ class App < Sinatra::Base
 
     def get_reservations(schedule)
       # reservations = db.xquery("SELECT `id`, `schedule_id`, `user_id`, `created_at` FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
-      reservations = Oj.load(redis[:reservation].get(schedule[:id]), symbol_keys: true)
+      reservations = redis[:reservation].lrange(schedule[:id], 0, -1).map { |json| Oj.load(json, symbol_keys: true) }
       unless reservations.nil? || reservations.empty?
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
@@ -167,7 +167,7 @@ class App < Sinatra::Base
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
 
       reservation_json = Oj.dump({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
-      redis[:reservation].set(schedule_id, reservation_json)
+      redis[:reservation].rPush(schedule_id, reservation_json)
 
       json({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
     end
