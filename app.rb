@@ -2,7 +2,6 @@ require "sinatra/json"
 require "active_support/json"
 require "active_support/time"
 require_relative "oj_encoder"
-require_relative "db"
 
 Time.zone = "UTC"
 
@@ -14,14 +13,6 @@ class App < Sinatra::Base
   set :json_encoder, OjEncoder.new
 
   helpers do
-    def db
-      DB.connection
-    end
-
-    def transaction(name = :default, &block)
-      DB.transaction(name, &block)
-    end
-
     def redis
       Thread.current[:redis] ||= {
         schedule: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 0),
@@ -77,12 +68,6 @@ class App < Sinatra::Base
   end
 
   post "/initialize" do
-    transaction do |tx|
-      tx.query("TRUNCATE `reservations`")
-      tx.query("TRUNCATE `schedules`")
-      # tx.query("TRUNCATE `users`")
-    end
-
     redis.values.map(&:flushall)
 
     id = ULID.generate
@@ -133,43 +118,39 @@ class App < Sinatra::Base
   post "/api/schedules" do
     required_staff_login!
 
-    transaction do |tx|
-      id = ULID.generate
-      title = params[:title].to_s
-      capacity = params[:capacity].to_i
-      created_at = Time.now
+    id = ULID.generate
+    title = params[:title].to_s
+    capacity = params[:capacity].to_i
+    created_at = Time.now
 
-      schedule_json = Oj.dump({id: id, title: title, capacity: capacity, created_at: created_at})
-      redis[:schedule].set(id, schedule_json)
+    schedule_json = Oj.dump({id: id, title: title, capacity: capacity, created_at: created_at})
+    redis[:schedule].set(id, schedule_json)
 
-      content_type "application/json"
-      schedule_json
-    end
+    content_type "application/json"
+    schedule_json
   end
 
   post "/api/reservations" do
     required_login!
 
-    transaction do |tx|
-      id = ULID.generate
-      schedule_id = params[:schedule_id].to_s
-      user_id = current_user[:id]
-      created_at = Time.now
+    id = ULID.generate
+    schedule_id = params[:schedule_id].to_s
+    user_id = current_user[:id]
+    created_at = Time.now
 
-      halt(403, JSON.generate(error: "schedule not found")) unless redis[:schedule].exists?(schedule_id)
-      halt(403, JSON.generate(error: "user not found")) unless redis[:user].exists?(user_id)
-      halt(403, JSON.generate(error: "already taken")) if redis[:reservation].lrange(schedule_id, 0, -1).map { |json| Oj.load(json, symbol_keys: true) }.any? { |reservation| reservation[:user_id] == user_id }
+    halt(403, JSON.generate(error: "schedule not found")) unless redis[:schedule].exists?(schedule_id)
+    halt(403, JSON.generate(error: "user not found")) unless redis[:user].exists?(user_id)
+    halt(403, JSON.generate(error: "already taken")) if redis[:reservation].lrange(schedule_id, 0, -1).map { |json| Oj.load(json, symbol_keys: true) }.any? { |reservation| reservation[:user_id] == user_id }
 
-      capacity = Oj.load(redis[:schedule].get(schedule_id), symbol_keys: true)[:capacity].to_i
-      reserved = redis[:reservation_count].incr(schedule_id)
+    capacity = Oj.load(redis[:schedule].get(schedule_id), symbol_keys: true)[:capacity].to_i
+    reserved = redis[:reservation_count].incr(schedule_id)
 
-      halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
+    halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
 
-      reservation_json = Oj.dump({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
-      redis[:reservation].rPush(schedule_id, reservation_json)
+    reservation_json = Oj.dump({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
+    redis[:reservation].rPush(schedule_id, reservation_json)
 
-      json({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
-    end
+    json({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
   end
 
   get "/api/schedules" do
