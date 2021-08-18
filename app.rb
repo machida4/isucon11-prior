@@ -177,11 +177,14 @@ class App < Sinatra::Base
     schedules = redis[:schedule].mget(schedules_keys).map { |s|
       Oj.load(s, symbol_keys: true)
     }
-    schedule_ids = schedules.map { |schedule| schedule[:id] }
     # schedule_id_count = db.xquery("SELECT schedule_id, COUNT(schedule_id) AS count FROM reservations GROUP BY schedule_id")
-    schedule_id_count_map = schedule_ids.map do |schedule_id|
-      [schedule_id, redis[:reservation_count].get("schedule_id")]
-    end.to_h
+    # schedule_id_count_map = schedule_ids.map do |schedule_id|
+    #   [schedule_id, redis[:reservation_count].get("schedule_id")]
+    # end.to_h
+
+    schedule_ids = schedules.map { |schedule| schedule[:id] }
+    schedule_counts = redis[:reservation_count].mget(schedule_ids)
+    schedule_id_count_map = schedule_ids.zip(schedule_counts).to_h
 
     schedules = schedules.map do |schedule|
       schedule[:reserved] = schedule_id_count_map[:id]
