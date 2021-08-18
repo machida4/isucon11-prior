@@ -77,6 +77,28 @@ class App < Sinatra::Base
     halt 500, JSON.generate(error: err.message)
   end
 
+  get "/initialize" do
+    transaction do |tx|
+      tx.query("TRUNCATE `reservations`")
+      tx.query("TRUNCATE `schedules`")
+      # tx.query("TRUNCATE `users`")
+    end
+
+    redis.values.map(&:flushall)
+
+    id = ULID.generate
+    email = "isucon2021_prior@isucon.net"
+    nickname = "isucon"
+    created_at = Time.now
+
+    staff_user = {id: id, email: email, nickname: nickname, staff: true, created_at: created_at}
+
+    redis[:user].set(id, Oj.dump(staff_user))
+    redis[:email].set(email, id)
+
+    json(language: "ruby")
+  end
+
   post "/initialize" do
     transaction do |tx|
       tx.query("TRUNCATE `reservations`")
