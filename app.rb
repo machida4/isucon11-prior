@@ -47,8 +47,8 @@ class App < Sinatra::Base
 
     def get_reservations(schedule)
       # reservations = db.xquery("SELECT `id`, `schedule_id`, `user_id`, `created_at` FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
-      reservations = Oj.load(redis[:reservation].get(schedule[:id]), symbol_keys: true).to_a
-      unless reservations.empty?
+      reservations = Oj.load(redis[:reservation].get(schedule[:id]), symbol_keys: true)
+      unless reservations.nil? || reservations.empty?
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
         users = redis[:user].mget(reservation_user_ids).map do |json|
