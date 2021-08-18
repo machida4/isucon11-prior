@@ -4,7 +4,8 @@ workers 3
 
 directory root
 rackup File.join(root, 'config.ru')
-bind 'tcp://0.0.0.0:9292'
+# bind 'tcp://0.0.0.0:9292'
+bind "unix:///home/isucon/webapp/ruby/tmp/puma.sock"
 environment ENV.fetch('RACK_ENV') { 'development' }
 pidfile File.join(root, 'tmp', 'puma.pid')
 
