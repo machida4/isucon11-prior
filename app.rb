@@ -22,16 +22,12 @@ class App < Sinatra::Base
       DB.transaction(name, &block)
     end
 
-    def redis_schedule
-      Thread.current[:redis_schedule] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 0)
-    end
-
-    def redis_users
-      Thread.current[:redis_users] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1)
-    end
-
-    def redis_emails
-      Thread.current[:redis_email] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 2)
+    def redis
+      Thread.current[:redis] ||= {
+        schedule: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 0),
+        user: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1),
+        email: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 2),
+      }
     end
 
     def required_login!
@@ -43,7 +39,7 @@ class App < Sinatra::Base
     end
 
     def current_user
-      @current_user ||= Oj.load(redis_users.get(session[:user_id]), symbol_keys: true)
+      @current_user ||= Oj.load(redis[:user].get(session[:user_id]), symbol_keys: true)
     end
 
     def get_reservations(schedule)
@@ -51,7 +47,7 @@ class App < Sinatra::Base
       if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
-        users = redis_users.mget(reservation_user_ids).map do |json|
+        users = redis[:user].mget(reservation_user_ids).map do |json|
           Oj.load(json, symbol_keys: true)
         end
         users_map = users.map do |user|
@@ -84,8 +80,7 @@ class App < Sinatra::Base
       # tx.query("TRUNCATE `users`")
     end
 
-    redis_schedule.flushall
-    redis_users.flushall
+    redis.values.map(&:flushall)
 
     id = ULID.generate
     email = "isucon2021_prior@isucon.net"
@@ -94,8 +89,8 @@ class App < Sinatra::Base
 
     staff_user = {id: id, email: email, nickname: nickname, staff: true, created_at: created_at}
 
-    redis_users.set(id, Oj.dump(staff_user))
-    redis_emails.set(email, id)
+    redis[:user].set(id, Oj.dump(staff_user))
+    redis[:email].set(email, id)
 
     json(language: "ruby")
   end
@@ -112,8 +107,8 @@ class App < Sinatra::Base
 
     user = {id: id, email: email, nickname: nickname, created_at: created_at}
 
-    redis_users.set(id, Oj.dump(user))
-    redis_emails.set(email, id)
+    redis[:user].set(id, Oj.dump(user))
+    redis[:email].set(email, id)
 
     json(user)
   end
@@ -121,7 +116,7 @@ class App < Sinatra::Base
   post "/api/login" do
     email = params[:email]
 
-    user_id = redis_emails.get(email)
+    user_id = redis[:email].get(email)
 
     if user_id
       session[:user_id] = user_id
@@ -142,7 +137,7 @@ class App < Sinatra::Base
       created_at = Time.now
 
       schedule_json = Oj.dump({id: id, title: title, capacity: capacity, created_at: created_at})
-      redis_schedule.set(id, schedule_json)
+      redis[:schedule].set(id, schedule_json)
 
       content_type "application/json"
       schedule_json
@@ -157,11 +152,11 @@ class App < Sinatra::Base
       schedule_id = params[:schedule_id].to_s
       user_id = current_user[:id]
 
-      halt(403, JSON.generate(error: "schedule not found")) unless redis_schedule.exists?(schedule_id)
-      halt(403, JSON.generate(error: "user not found")) unless redis_users.exists(user_id)
+      halt(403, JSON.generate(error: "schedule not found")) unless redis[:schedule].exists?(schedule_id)
+      halt(403, JSON.generate(error: "user not found")) unless redis[:user].exists(user_id)
       halt(403, JSON.generate(error: "already taken")) if tx.xquery("SELECT 1 FROM `reservations` WHERE `schedule_id` = ? AND `user_id` = ? LIMIT 1", schedule_id, user_id).first
 
-      capacity = Oj.load(redis_schedule.get(schedule_id), symbol_keys: true)[:capacity].to_i
+      capacity = Oj.load(redis[:schedule].get(schedule_id), symbol_keys: true)[:capacity].to_i
       reserved = tx.xquery("SELECT COUNT(*) AS count FROM `reservations` WHERE `schedule_id` = ?", schedule_id).first[:count]
 
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
@@ -174,10 +169,10 @@ class App < Sinatra::Base
   end
 
   get "/api/schedules" do
-    schedules_keys = redis_schedule.keys
+    schedules_keys = redis[:schedule].keys
     json([]) if schedules_keys.empty?
 
-    schedules = redis_schedule.mget(schedules_keys).map { |s|
+    schedules = redis[:schedule].mget(schedules_keys).map { |s|
       Oj.load(s, symbol_keys: true)
     }
     schedule_id_count = db.xquery("SELECT schedule_id, COUNT(schedule_id) AS count FROM reservations GROUP BY schedule_id")
@@ -195,7 +190,7 @@ class App < Sinatra::Base
 
   get "/api/schedules/:id" do
     id = params[:id]
-    red = redis_schedule.get(id)
+    red = redis[:schedule].get(id)
     schedule = Oj.load(red, symbol_keys: true)
     halt(404, {}) unless schedule
 
