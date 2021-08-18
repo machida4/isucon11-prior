@@ -155,11 +155,12 @@ class App < Sinatra::Base
       user_id = current_user[:id]
 
       halt(403, JSON.generate(error: "schedule not found")) unless redis[:schedule].exists?(schedule_id)
-      halt(403, JSON.generate(error: "user not found")) unless redis[:user].exists(user_id)
+      halt(403, JSON.generate(error: "user not found")) unless redis[:user].exists?(user_id)
       halt(403, JSON.generate(error: "already taken")) if tx.xquery("SELECT 1 FROM `reservations` WHERE `schedule_id` = ? AND `user_id` = ? LIMIT 1", schedule_id, user_id).first
 
       capacity = Oj.load(redis[:schedule].get(schedule_id), symbol_keys: true)[:capacity].to_i
-      redis[:reservation_count].incr(schedule_id)
+      incr = redis[:reservation_count].incr(schedule_id)
+      reserved = incr.value
       # reserved = tx.xquery("SELECT COUNT(*) AS count FROM `reservations` WHERE `schedule_id` = ?", schedule_id).first[:count]
 
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
