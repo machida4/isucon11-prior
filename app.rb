@@ -28,7 +28,7 @@ class App < Sinatra::Base
         user: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1),
         email: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 2),
         # あるscheduleに対するreservationの数
-        reservation_count: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 3),
+        reservation_count: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 3)
       }
     end
 
@@ -185,12 +185,12 @@ class App < Sinatra::Base
     #   [schedule_id, redis[:reservation_count].get("schedule_id")]
     # end.to_h
 
-    schedule_ids = schedules.map { |schedule| schedule[:id] }
-    schedule_counts = redis[:reservation_count].mget(schedule_ids)
-    schedule_id_count_map = schedule_ids.zip(schedule_counts).to_h
+    # schedule_ids = schedules.map { |schedule| schedule[:id] }
+    schedule_counts = redis[:reservation_count].mget(schedules_keys)
+    schedule_id_count_map = schedules_keys.zip(schedule_counts).to_h
 
     schedules = schedules.map do |schedule|
-      schedule[:reserved] = schedule_id_count_map[:id]
+      schedule[:reserved] = schedule_id_count_map[schedule[:id]]
       schedule
     end
 
