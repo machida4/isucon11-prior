@@ -172,7 +172,10 @@ class App < Sinatra::Base
 
   get "/api/schedules" do
     schedules_keys = redis[:schedule].keys
-    json([]) if schedules_keys.empty?
+    if schedules_keys.empty?
+      json([])
+      return
+    end
 
     schedules = redis[:schedule].mget(schedules_keys).map { |s|
       Oj.load(s, symbol_keys: true)
