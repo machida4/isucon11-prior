@@ -7,8 +7,6 @@ require_relative "db"
 Time.zone = "UTC"
 
 class App < Sinatra::Base
-  enable :logging
-
   set :session_secret, "tagomoris"
   set :sessions, key: "session_isucon2021_prior", expire_after: 3600
   set :show_exceptions, false
@@ -24,9 +22,17 @@ class App < Sinatra::Base
       DB.transaction(name, &block)
     end
 
-    # def redis
-    #   Thread.current[:redis] ||= Redis.new(host: "127.0.0.1", port: 6380, driver: :hiredis)
-    # end
+    def redis_schedule
+      Thread.current[:redis_schedule] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 0)
+    end
+
+    def redis_users
+      Thread.current[:redis_users] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1)
+    end
+
+    def redis_emails
+      Thread.current[:redis_email] ||= Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 2)
+    end
 
     def required_login!
       halt(401, JSON.generate(error: "login required")) if current_user.nil?
@@ -37,7 +43,7 @@ class App < Sinatra::Base
     end
 
     def current_user
-      @current_user ||= db.xquery("SELECT `id`, `email`, `nickname`, `staff`, `nickname` FROM `users` WHERE `id` = ? LIMIT 1", session[:user_id]).first
+      @current_user ||= Oj.load(redis_users.get(session[:user_id]), symbol_keys: true)
     end
 
     def get_reservations(schedule)
@@ -45,7 +51,9 @@ class App < Sinatra::Base
       if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
-        users = db.xquery("SELECT `id`, `email`, `nickname`, `staff`, `nickname` FROM `users` WHERE `id` IN (?)", [reservation_user_ids])
+        users = redis_users.mget(reservation_user_ids).map do |json|
+          Oj.load(json, symbol_keys: true)
+        end
         users_map = users.map do |user|
           user[:email] = "" if !current_user || !current_user[:staff]
 
@@ -73,13 +81,21 @@ class App < Sinatra::Base
     transaction do |tx|
       tx.query("TRUNCATE `reservations`")
       tx.query("TRUNCATE `schedules`")
-      tx.query("TRUNCATE `users`")
-
-      id = ULID.generate
-      tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `staff`, `created_at`) VALUES (?, ?, ?, true, NOW(6))", id, "isucon2021_prior@isucon.net", "isucon")
+      # tx.query("TRUNCATE `users`")
     end
 
-    # redis.flushall
+    redis_schedule.flushall
+    redis_users.flushall
+
+    id = ULID.generate
+    email = "isucon2021_prior@isucon.net"
+    nickname = "isucon"
+    created_at = Time.now
+
+    staff_user = {id: id, email: email, nickname: nickname, staff: true, created_at: created_at}
+
+    redis_users.set(id, Oj.dump(staff_user))
+    redis_emails.set(email, id)
 
     json(language: "ruby")
   end
@@ -89,18 +105,15 @@ class App < Sinatra::Base
   end
 
   post "/api/signup" do
-    id = ""
-    nickname = ""
+    id = ULID.generate
+    email = params[:email]
+    nickname = params[:nickname]
+    created_at = Time.now
 
-    user = transaction do |tx|
-      id = ULID.generate
-      email = params[:email]
-      nickname = params[:nickname]
-      created_at = Time.now
-      tx.xquery("INSERT INTO `users` (`id`, `email`, `nickname`, `created_at`) VALUES (?, ?, ?, ?)", id, email, nickname, created_at)
+    user = {id: id, email: email, nickname: nickname, created_at: created_at}
 
-      {id: id, email: email, nickname: nickname, created_at: created_at}
-    end
+    redis_users.set(id, Oj.dump(user))
+    redis_emails.set(email, id)
 
     json(user)
   end
@@ -108,10 +121,10 @@ class App < Sinatra::Base
   post "/api/login" do
     email = params[:email]
 
-    user = db.xquery("SELECT `id`, `nickname` FROM `users` WHERE `email` = ? LIMIT 1", email).first
+    user_id = redis_emails.get(email)
 
-    if user
-      session[:user_id] = user[:id]
+    if user_id
+      session[:user_id] = user_id
       json({id: current_user[:id], email: current_user[:email], nickname: current_user[:nickname], created_at: current_user[:created_at]})
     else
       session[:user_id] = nil
@@ -128,9 +141,11 @@ class App < Sinatra::Base
       capacity = params[:capacity].to_i
       created_at = Time.now
 
-      tx.xquery("INSERT INTO `schedules` (`id`, `title`, `capacity`, `created_at`) VALUES (?, ?, ?, ?)", id, title, capacity, created_at)
+      schedule_json = Oj.dump({id: id, title: title, capacity: capacity, created_at: created_at})
+      redis_schedule.set(id, schedule_json)
 
-      json({id: id, title: title, capacity: capacity, created_at: created_at})
+      content_type "application/json"
+      schedule_json
     end
   end
 
@@ -142,11 +157,11 @@ class App < Sinatra::Base
       schedule_id = params[:schedule_id].to_s
       user_id = current_user[:id]
 
-      halt(403, JSON.generate(error: "schedule not found")) if tx.xquery("SELECT 1 FROM `schedules` WHERE `id` = ? LIMIT 1 FOR UPDATE", schedule_id).first.nil?
-      halt(403, JSON.generate(error: "user not found")) unless tx.xquery("SELECT 1 FROM `users` WHERE `id` = ? LIMIT 1", user_id).first
+      halt(403, JSON.generate(error: "schedule not found")) unless redis_schedule.exists?(schedule_id)
+      halt(403, JSON.generate(error: "user not found")) unless redis_users.exists(user_id)
       halt(403, JSON.generate(error: "already taken")) if tx.xquery("SELECT 1 FROM `reservations` WHERE `schedule_id` = ? AND `user_id` = ? LIMIT 1", schedule_id, user_id).first
 
-      capacity = tx.xquery("SELECT `capacity` FROM `schedules` WHERE `id` = ? LIMIT 1", schedule_id).first[:capacity]
+      capacity = Oj.load(redis_schedule.get(schedule_id), symbol_keys: true)[:capacity].to_i
       reserved = tx.xquery("SELECT COUNT(*) AS count FROM `reservations` WHERE `schedule_id` = ?", schedule_id).first[:count]
 
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
@@ -159,7 +174,12 @@ class App < Sinatra::Base
   end
 
   get "/api/schedules" do
-    schedules = db.xquery("SELECT `id`, `title`, `capacity`, `created_at` FROM `schedules` ORDER BY `id` DESC")
+    schedules_keys = redis_schedule.keys
+    json([]) if schedules_keys.empty?
+
+    schedules = redis_schedule.mget(schedules_keys).map { |s|
+      Oj.load(s, symbol_keys: true)
+    }
     schedule_id_count = db.xquery("SELECT schedule_id, COUNT(schedule_id) AS count FROM reservations GROUP BY schedule_id")
     schedule_id_count_map = schedule_id_count.map do |si|
       [si[:schedule_id], si[:count]]
@@ -175,7 +195,8 @@ class App < Sinatra::Base
 
   get "/api/schedules/:id" do
     id = params[:id]
-    schedule = db.xquery("SELECT `id`, `title`, `capacity`, `created_at` FROM `schedules` WHERE id = ? LIMIT 1", id).first
+    red = redis_schedule.get(id)
+    schedule = Oj.load(red, symbol_keys: true)
     halt(404, {}) unless schedule
 
     get_reservations(schedule)
