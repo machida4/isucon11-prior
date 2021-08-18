@@ -3,7 +3,7 @@
 restart: ## Restart all
 	@git pull
 	@make -s nginx-restart
-	@make -s db-restart
+	# @make -s db-restart
 	@make -s app-restart
 
 app-restart: ## Restart Server
