@@ -27,8 +27,9 @@ class App < Sinatra::Base
         schedule: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 0),
         user: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1),
         email: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 2),
+        reservation: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 3),
         # あるscheduleに対するreservationの数
-        reservation_count: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 3)
+        reservation_count: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 4)
       }
     end
 
@@ -45,7 +46,8 @@ class App < Sinatra::Base
     end
 
     def get_reservations(schedule)
-      reservations = db.xquery("SELECT `id`, `schedule_id`, `user_id`, `created_at` FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
+      # reservations = db.xquery("SELECT `id`, `schedule_id`, `user_id`, `created_at` FROM `reservations` WHERE `schedule_id` = ?", schedule[:id])
+      reservations = Oj.load(redis[:reservation].get(schedule[:id]))
       if !(reservations.size == 0)
         reservation_user_ids = reservations.map { |reservation| reservation[:user_id] }
 
@@ -153,6 +155,7 @@ class App < Sinatra::Base
       id = ULID.generate
       schedule_id = params[:schedule_id].to_s
       user_id = current_user[:id]
+      created_at = Time.now
 
       halt(403, JSON.generate(error: "schedule not found")) unless redis[:schedule].exists?(schedule_id)
       halt(403, JSON.generate(error: "user not found")) unless redis[:user].exists?(user_id)
@@ -163,8 +166,8 @@ class App < Sinatra::Base
 
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
 
-      created_at = Time.now
-      tx.xquery("INSERT INTO `reservations` (`id`, `schedule_id`, `user_id`, `created_at`) VALUES (?, ?, ?, ?)", id, schedule_id, user_id, created_at)
+      reservation_json = Oj.dump({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
+      redis[:reservation].set(schedule_id, reservation_json)
 
       json({id: id, schedule_id: schedule_id, user_id: user_id, created_at: created_at})
     end
