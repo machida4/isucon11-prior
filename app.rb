@@ -27,6 +27,8 @@ class App < Sinatra::Base
         schedule: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 0),
         user: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 1),
         email: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 2),
+        # あるscheduleに対するreservationの数
+        reservation_count: Redis.new(host: "127.0.0.1", port: 6379, driver: :hiredis, db: 3),
       }
     end
 
@@ -157,7 +159,8 @@ class App < Sinatra::Base
       halt(403, JSON.generate(error: "already taken")) if tx.xquery("SELECT 1 FROM `reservations` WHERE `schedule_id` = ? AND `user_id` = ? LIMIT 1", schedule_id, user_id).first
 
       capacity = Oj.load(redis[:schedule].get(schedule_id), symbol_keys: true)[:capacity].to_i
-      reserved = tx.xquery("SELECT COUNT(*) AS count FROM `reservations` WHERE `schedule_id` = ?", schedule_id).first[:count]
+      redis[:reservation_count].incr(schedule_id)
+      # reserved = tx.xquery("SELECT COUNT(*) AS count FROM `reservations` WHERE `schedule_id` = ?", schedule_id).first[:count]
 
       halt(403, JSON.generate(error: "capacity is already full")) if reserved >= capacity
 
@@ -175,13 +178,14 @@ class App < Sinatra::Base
     schedules = redis[:schedule].mget(schedules_keys).map { |s|
       Oj.load(s, symbol_keys: true)
     }
-    schedule_id_count = db.xquery("SELECT schedule_id, COUNT(schedule_id) AS count FROM reservations GROUP BY schedule_id")
-    schedule_id_count_map = schedule_id_count.map do |si|
-      [si[:schedule_id], si[:count]]
+    schedule_ids = schedules.map { |schedule| schedule[:id] }
+    # schedule_id_count = db.xquery("SELECT schedule_id, COUNT(schedule_id) AS count FROM reservations GROUP BY schedule_id")
+    schedule_id_count_map = schedule_ids.map do |schedule_id|
+      [schedule_id, redis[:reservation_count].get("schedule_id")]
     end.to_h
 
     schedules = schedules.map do |schedule|
-      schedule[:reserved] = schedule_id_count_map.fetch(schedule[:id], 0)
+      schedule[:reserved] = schedule_id_count_map[:id]
       schedule
     end
 
