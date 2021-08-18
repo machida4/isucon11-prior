@@ -158,7 +158,7 @@ class App < Sinatra::Base
 
       halt(403, JSON.generate(error: "schedule not found")) unless redis[:schedule].exists?(schedule_id)
       halt(403, JSON.generate(error: "user not found")) unless redis[:user].exists?(user_id)
-      halt(403, JSON.generate(error: "already taken")) if redis[:reservation].lrange(schedule[:id], 0, -1).map { |json| Oj.load(json, symbol_keys: true) }.any? { |reservation| reservation[:user_id] == user_id}
+      halt(403, JSON.generate(error: "already taken")) if redis[:reservation].lrange(schedule_id, 0, -1).map { |json| Oj.load(json, symbol_keys: true) }.any? { |reservation| reservation[:user_id] == user_id }
 
       capacity = Oj.load(redis[:schedule].get(schedule_id), symbol_keys: true)[:capacity].to_i
       reserved = redis[:reservation_count].incr(schedule_id)
